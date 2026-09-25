@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  ArrowLeft, ArrowRight, BarChart3, Bookmark, BrainCircuit,
+  ArrowLeft, ArrowRight, Banknote, BarChart3, Bookmark, BrainCircuit,
   Check, ChevronRight, Eye, FileBarChart, Flame,
   Grid2X2, Home, Lightbulb, LogIn, LogOut, RotateCcw, Star, Target, Trophy, User, X,
 } from 'lucide-react';
@@ -180,8 +180,21 @@ function App() {
   }, [questionList]);
 
   const restart = useCallback(() => {
-    setPracticeState((prev) => ({ ...prev, index: 0, selected: null, answered: {} }));
-  }, []);
+    setPracticeState((prev) => {
+      const activeQuestionIds = new Set(activeSet?.questions.map((q) => q.id) || []);
+      return {
+        ...prev,
+        index: 0,
+        selected: null,
+        mode: 'sequential',
+        answered: Object.fromEntries(
+          Object.entries(prev.answered).filter(([id]) => !activeQuestionIds.has(id))
+        ),
+        wrongs: prev.wrongs.filter((id) => !activeQuestionIds.has(id)),
+      };
+    });
+    setView('practice');
+  }, [activeSet]);
 
   const enterResult = useCallback(() => setView('result'), []);
 
@@ -198,6 +211,7 @@ function App() {
       <PracticePage
         key={`${activeSet.id}-${practiceState.mode}`}
         set={activeSet}
+        questions={questionList}
         question={question}
         index={practiceState.index}
         listLength={questionList.length}
@@ -513,7 +527,7 @@ function HomePage({ onOpen, onLogout }) {
             <p className="hero-desc">
               {user
                 ? `你已完成 ${answeredCount} 道题，收藏 ${bookmarksCount} 道，错题 ${wrongsCount} 道。继续加油！`
-                : '三大专项 · 即时反馈 · 完整解析。登录后可保存你的练习进度。'}
+                : '四大专项 · 即时反馈 · 完整解析。登录后可保存你的练习进度。'}
             </p>
             <div className="hero-stats">
               <div className="stat">
@@ -521,7 +535,7 @@ function HomePage({ onOpen, onLogout }) {
                 <span className="stat-label">精选题目</span>
               </div>
               <div className="stat">
-                <span className="stat-num">3</span>
+                <span className="stat-num">{questionSets.length}</span>
                 <span className="stat-label">专项题型</span>
               </div>
               <div className="stat">
@@ -655,6 +669,7 @@ function SetCard({ set, onOpen, progress }) {
 function renderIcon(id) {
   if (id === 'verbal') return <BrainCircuit size={26} />;
   if (id === 'data') return <FileBarChart size={26} />;
+  if (id === 'bank') return <Banknote size={26} />;
   return <Grid2X2 size={26} />;
 }
 
@@ -662,7 +677,7 @@ function renderIcon(id) {
    刷题页
    ============================================================ */
 function PracticePage({
-  set, question, index, listLength, selected, record, bookmarked, answeredMap, bookmarks,
+  set, questions, question, index, listLength, selected, record, bookmarked, answeredMap, bookmarks,
   showNavigator, onToggleNavigator, onChoose, onSubmit, onNext, onPrev,
   onJumpTo, onBookmark, onBack, onFinish, mode,
 }) {
@@ -692,7 +707,7 @@ function PracticePage({
     return () => ro.disconnect();
   }, []);
 
-  const canExpand = set.questions.length > NAV_COLS * NAV_ROWS;
+  const canExpand = questions.length > NAV_COLS * NAV_ROWS;
 
   // 首次进入或切换题目时：页面回到顶部；答题卡滚动到当前题所在行，使其在顶部呈现
   const questionId = question.id;
@@ -704,7 +719,7 @@ function PracticePage({
       const navEl = navRef.current;
       if (navEl && !showNavigator) {
         // 按题目 id 在答题卡全集中的位置定位格子，offsetTop 即该行顶部，滚动精确无偏差
-        const curIdx = set.questions.findIndex((q) => q.id === question.id);
+        const curIdx = questions.findIndex((q) => q.id === question.id);
         const curCell = curIdx >= 0 ? navEl.children[curIdx] : null;
         if (curCell) {
           navEl.scrollTo({ top: curCell.offsetTop, behavior: 'smooth' });
@@ -842,7 +857,7 @@ function PracticePage({
             className={`nav-grid ${showNavigator ? '' : 'collapsed'}`}
             style={{ maxHeight: showNavigator ? undefined : navHeight }}
           >
-            {set.questions.map((q, idx) => {
+            {questions.map((q, idx) => {
               const answered = answeredMap[q.id];
               const isCur = q.id === question.id;
               let cls = '';
@@ -860,15 +875,15 @@ function PracticePage({
           <div className="nav-stats">
             <div className="ns-row">
               <span>已作答</span>
-              <b>{set.questions.filter((q) => answeredMap[q.id]).length}/{set.questions.length}</b>
+              <b>{questions.filter((q) => answeredMap[q.id]).length}/{questions.length}</b>
             </div>
             <div className="ns-row">
               <span>正确</span>
-              <b>{set.questions.filter((q) => answeredMap[q.id] === q.answer).length}</b>
+              <b>{questions.filter((q) => answeredMap[q.id] === q.answer).length}</b>
             </div>
             <div className="ns-row">
               <span>收藏</span>
-              <b>{set.questions.filter((q) => bookmarks.includes(q.id)).length}</b>
+              <b>{questions.filter((q) => bookmarks.includes(q.id)).length}</b>
             </div>
             <div className="ns-row">
               <span>进度</span>
