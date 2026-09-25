@@ -281,7 +281,14 @@ function App() {
     );
   }
 
-  return <HomePage onOpen={openSet} onLogout={handleLogout} />;
+  return (
+    <HomePage
+      onOpen={openSet}
+      onLogout={handleLogout}
+      onOpenWrongs={() => setView('wrongs')}
+      onOpenBookmarks={() => setView('bookmarks-page')}
+    />
+  );
 }
 
 /* ============================================================
@@ -467,7 +474,7 @@ function UserMenu({ username, onLogout }) {
 /* ============================================================
    首页 (带用户统计)
    ============================================================ */
-function HomePage({ onOpen, onLogout }) {
+function HomePage({ onOpen, onLogout, onOpenWrongs, onOpenBookmarks }) {
   const total = questionSets.reduce((sum, set) => sum + set.questions.length, 0);
   const [user, setUser] = useState(getCurrentUser());
   const progress = user ? getUserProgress(user) : null;
@@ -496,7 +503,15 @@ function HomePage({ onOpen, onLogout }) {
         </div>
         <div className="nav-actions">
           {user ? (
-            <UserMenu username={user} onLogout={handleLogout} />
+            <>
+              <button className="nav-btn-text" onClick={onOpenBookmarks}>
+                <Bookmark size={16} /> 收藏
+              </button>
+              <button className="nav-btn-text" onClick={onOpenWrongs}>
+                <Flame size={16} /> 错题本
+              </button>
+              <UserMenu username={user} onLogout={handleLogout} />
+            </>
           ) : (
             <button className="nav-btn-text" onClick={() => {}}>
               <LogIn size={16} /> 请登录
